@@ -193,5 +193,5 @@ force-exclude = '''
 [tool.isort]
 line_length = 115
 multi_line_output = 3
-include_trailing_comma = True
-profile = black
+include_trailing_comma = true
+profile = "black"
