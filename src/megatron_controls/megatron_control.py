@@ -2,8 +2,9 @@ import inspect
 import os
 
 import bluesky.plan_stubs as bps
-from megatron.exceptions import CommandNotFoundError, StopScript
-from megatron.support import wait_for_condition
+
+from .exceptions import CommandNotFoundError, StopScript
+from .support import wait_for_condition
 
 active_failif_conditions = {}
 

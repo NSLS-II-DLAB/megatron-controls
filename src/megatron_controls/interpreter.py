@@ -1,9 +1,10 @@
 import re
 
 from bluesky import plan_stubs as bps
-from megatron.exceptions import CommandNotFoundError, LoopSyntaxError, StopScript
-from megatron.megatron_control import process_megatron_command
-from megatron.motor_control import process_motor_command
+
+from .exceptions import CommandNotFoundError, LoopSyntaxError, StopScript
+from .megatron_control import process_megatron_command
+from .motor_control import process_motor_command
 
 
 class MegatronInterpreter:

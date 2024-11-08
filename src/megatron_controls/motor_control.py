@@ -1,8 +1,9 @@
 import inspect
 
 import bluesky.plan_stubs as bps
-from megatron.exceptions import CommandNotFoundError
-from megatron.support import motor_home, motor_move, motor_stop
+
+from .exceptions import CommandNotFoundError
+from .support import motor_home, motor_move, motor_stop
 
 
 def process_motor_command(command, args, context):
