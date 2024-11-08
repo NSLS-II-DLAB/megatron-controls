@@ -41,7 +41,7 @@ class _ConditionStatus(DeviceStatus):
     """
 
     def __init__(self, signal, target, operator, *, tolerance=None, start_ts=None, **kwargs):
-        self._tname = "timeout for {}".format(signal.name)
+        self._tname = f"timeout for {signal.name}"
         if start_ts is None:
             start_ts = time.time()
 
@@ -197,17 +197,15 @@ class _ConditionStatus(DeviceStatus):
 
     def __str__(self):
         return (
-            "{0}(done={1.done}, pos={1.pos.name}, "
-            "elapsed={1.elapsed:.1f}, "
-            "success={1.success}, settle_time={1.settle_time})"
-            "".format(self.__class__.__name__, self)
+            f"{self.__class__.__name__}(done={self.done}, pos={self.pos.name}, "
+            f"elapsed={self.elapsed:.1f}, "
+            f"success={self.success}, settle_time={self.settle_time})"
         )
 
     __repr__ = __str__
 
 
 def gen_set_condition(re):
-
     async def _inner(msg):
         signal = msg.kwargs["signal"]
         target = msg.kwargs["target"]
@@ -266,7 +264,7 @@ def motor_home(motor):
     yield from motor_channel_enable(motor)
     yield from motor_stop(motor)
     yield from bps.abs_set(motor.home_reverse, 1, wait=True)
-    # yield from bps.sleep(1) # remove in test environment 
+    # yield from bps.sleep(1) # remove in test environment
     yield from wait_for_condition(motor.homing_monitor, 0, "==")
 
 

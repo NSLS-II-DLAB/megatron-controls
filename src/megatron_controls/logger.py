@@ -1,10 +1,11 @@
-import os
 import asyncio
+import os
 from datetime import datetime
+
 from bluesky.utils import make_decorator
 
-def ts_periodic_logging_wrapper(plan, signals, log_file_path, period=1):
 
+def ts_periodic_logging_wrapper(plan, signals, log_file_path, period=1):
     stop = asyncio.Event()
 
     async def logging_coro():
@@ -26,8 +27,7 @@ def ts_periodic_logging_wrapper(plan, signals, log_file_path, period=1):
 
             await asyncio.sleep(period)
 
-    class StartStopLogging(object):
-
+    class StartStopLogging:
         def __enter__(self):
             print("Starting periodic logging")
             asyncio.ensure_future(logging_coro())

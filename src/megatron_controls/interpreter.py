@@ -1,27 +1,87 @@
 import re
-import os
+
 from bluesky import plan_stubs as bps
+from megatron.exceptions import CommandNotFoundError, LoopSyntaxError, StopScript
 from megatron.megatron_control import process_megatron_command
 from megatron.motor_control import process_motor_command
-from megatron.exceptions import CommandNotFoundError, LoopSyntaxError, StopScript
+
 
 class MegatronInterpreter:
     def __init__(self, *, shared_context):
         self.context = shared_context
         self.context.run_script_callback = self.execute_script  # Set the callback for running sub-scripts
-        self.megatron_commands = ["email", "exit", "failif", "failifoff", "l", "log", "lograte", "plot", "print", "run", "setao", "setdo", "stop", "t", "var", "waitai", "waitdi"]
-        self.motor_commands = ["ac", "af", "ba", "bg", "bi", "bl", "bm", "bt", "bz", "cc", "ce", "cn", "dc", "dp", "er", "fa", "fe", "fl", "fv", "hm", "hv", "ib", "iht", "il", "kd", "ki", "kp", "ld", "mo", "mt", "op", "pa", "pr", "pv", "sc", "sh", "sp", "st", "ta", "tp", "xq"]
+        self.megatron_commands = [
+            "email",
+            "exit",
+            "failif",
+            "failifoff",
+            "l",
+            "log",
+            "lograte",
+            "plot",
+            "print",
+            "run",
+            "setao",
+            "setdo",
+            "stop",
+            "t",
+            "var",
+            "waitai",
+            "waitdi",
+        ]
+        self.motor_commands = [
+            "ac",
+            "af",
+            "ba",
+            "bg",
+            "bi",
+            "bl",
+            "bm",
+            "bt",
+            "bz",
+            "cc",
+            "ce",
+            "cn",
+            "dc",
+            "dp",
+            "er",
+            "fa",
+            "fe",
+            "fl",
+            "fv",
+            "hm",
+            "hv",
+            "ib",
+            "iht",
+            "il",
+            "kd",
+            "ki",
+            "kp",
+            "ld",
+            "mo",
+            "mt",
+            "op",
+            "pa",
+            "pr",
+            "pv",
+            "sc",
+            "sh",
+            "sp",
+            "st",
+            "ta",
+            "tp",
+            "xq",
+        ]
 
     def execute_script(self, script_path):
-
-        with open(script_path, "r") as script_file:
+        with open(script_path) as script_file:
             script_lines = script_file.readlines()
 
         def plan():
             i = 0
             while i < len(script_lines):
                 line = script_lines[i].strip()
-                if line.startswith('#'):  # Ignore comments
+                if line.startswith("#"):  # Ignore comments
                     i += 1
                     continue
 
@@ -42,7 +102,7 @@ class MegatronInterpreter:
                         loop_end = self.find_end_of_loop(script_lines, i)
                         if loop_end == -1:
                             raise LoopSyntaxError()
-                        loop_block = script_lines[i + 1:loop_end]
+                        loop_block = script_lines[i + 1 : loop_end]
                         yield from self.handle_loop(loop_count, loop_block)
                         i = loop_end
                     else:
@@ -114,7 +174,7 @@ class MegatronInterpreter:
                 if loop_end == -1:
                     raise LoopSyntaxError()
 
-                nested_block = block[i + 1:loop_end]
+                nested_block = block[i + 1 : loop_end]
                 yield from self.handle_loop(loop_count, nested_block)
                 i = loop_end + 1
                 continue
