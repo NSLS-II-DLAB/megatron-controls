@@ -6,7 +6,7 @@ import bluesky.plan_stubs as bps
 import numpy as np
 from bluesky import Msg
 from ophyd import Component as Cpt
-from ophyd import DeviceStatus, EpicsMotor, EpicsSignal, EpicsSignalRO
+from ophyd import Device, DeviceStatus, EpicsMotor, EpicsSignal, EpicsSignalRO
 
 
 class EpicsMotorGalil(EpicsMotor):
@@ -19,6 +19,15 @@ class EpicsMotorGalil(EpicsMotor):
             self.clear_sub(st._finished)
             st.set_finished()
         return st
+
+
+class ION_Pump_PS(Device):
+    Pwr_I = Cpt(EpicsSignalRO, "Pwr-I", kind="omitted", auto_monitor=True)
+    I_I = Cpt(EpicsSignalRO, "I-I", kind="omitted", auto_monitor=True)
+    E_I = Cpt(EpicsSignalRO, "E-I", kind="omitted", auto_monitor=True)
+    Rate_Arc_I = Cpt(EpicsSignalRO, "Rate:Arc-I", kind="omitted", auto_monitor=True)
+    Cnt_Target_KwHr_RB = Cpt(EpicsSignalRO, "Cnt:TargetKwHr-RB", kind="omitted", auto_monitor=True)
+    Enbl_Out_Cmd = Cpt(EpicsSignal, "Enbl:Out-Cmd", string=True, kind="omitted", auto_monitor=True)
 
 
 class _ConditionStatus(DeviceStatus):
@@ -69,16 +78,16 @@ class _ConditionStatus(DeviceStatus):
 
             success = False
             if operator == "<":
-                if value < target:
+                if value < target + tolerance:
                     success = True
             elif operator == "<=":
-                if value <= target:
+                if value <= target + tolerance:
                     success = True
             elif operator == ">":
-                if value > target:
+                if value > target - tolerance:
                     success = True
             elif operator == ">=":
-                if value >= target:
+                if value >= target - tolerance:
                     success = True
             elif operator in ("=", "=="):
                 if target - tolerance <= value <= target + tolerance:
@@ -264,7 +273,7 @@ def motor_home(motor):
     yield from motor_channel_enable(motor)
     yield from motor_stop(motor)
     yield from bps.abs_set(motor.home_reverse, 1, wait=True)
-    # yield from bps.sleep(1) # remove in test environment
+    yield from bps.sleep(1)
     yield from wait_for_condition(motor.homing_monitor, 0, "==")
 
 
