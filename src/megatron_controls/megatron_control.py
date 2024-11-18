@@ -108,13 +108,8 @@ def failifoff(args):
 
 def log(args, context):
     signal_name = args[0]
-    if signal_name in context.device_mapping:
-        signal_device_name = context.device_mapping[signal_name]
-        signal = getattr(context.devices, signal_device_name)
-        context.logged_signals[signal_name] = signal
-        print(f"Added {signal_name} to logging signals.")
-    else:
-        raise RuntimeError(f"Signal {signal_name} not found in device mapping.")
+    context.logged_signals[signal_name] = context._name_to_device[signal_name]
+    print(f"Added {signal_name} to logging signals.")
     yield from bps.null()
 
 
@@ -131,6 +126,15 @@ def run(args, context):
     print(f"Running script: {script_name} ({called_script_path})")
 
     yield from context.run_script_callback(called_script_path)
+
+
+def set(args, context):
+    print("Setting digital output")
+    dev_name = args[0]
+    v = args[1]
+    value = v if isinstance(v, str) else int(v)
+    device = context._name_to_device[dev_name]
+    yield from bps.abs_set(device, value)
 
 
 def setao(args):

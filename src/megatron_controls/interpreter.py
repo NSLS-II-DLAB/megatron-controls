@@ -11,6 +11,8 @@ class MegatronInterpreter:
     def __init__(self, *, shared_context):
         self.context = shared_context
         self.context.run_script_callback = self.execute_script  # Set the callback for running sub-scripts
+        self._process_supported_devices()
+
         self.megatron_commands = [
             "email",
             "exit",
@@ -22,6 +24,7 @@ class MegatronInterpreter:
             "plot",
             "print",
             "run",
+            "set",
             "setao",
             "setdo",
             "stop",
@@ -73,6 +76,13 @@ class MegatronInterpreter:
             "tp",
             "xq",
         ]
+
+    def _process_supported_devices(self):
+        for desc, nm in self.context.device_mapping.items():
+            dev_name_full = nm
+            dev_name = dev_name_full.split(".", 1)[0]
+            dev = eval(dev_name_full, {dev_name: getattr(self.context.devices, dev_name)})
+            self.context._name_to_device[desc] = dev
 
     def execute_script(self, script_path):
         with open(script_path) as script_file:

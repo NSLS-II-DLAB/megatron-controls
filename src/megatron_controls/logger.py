@@ -22,7 +22,9 @@ def ts_periodic_logging_wrapper(plan, signals, log_file_path, period=1):
                 if is_new_file:
                     s = ",".join([f'"{_}"' for _ in signals.keys()])
                     f.write(f"Timestamp,{s}\n")
-                s = ",".join([f"{_.value}" for _ in signals.values()])
+
+                values = [_.value for _ in signals.values()]
+                s = ",".join([f"{_:.6f}" if isinstance(_, float) else f"{_}" for _ in values])
                 f.write(f"{timestamp},{s}\n")
 
             await asyncio.sleep(period)
