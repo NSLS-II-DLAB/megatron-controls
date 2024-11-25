@@ -1,3 +1,4 @@
+import asyncio
 from types import SimpleNamespace
 
 _device_mapping = {
@@ -27,6 +28,9 @@ def create_shared_context(devices):
         device_mapping=_device_mapping,
         required_devices=_required_devices,
         logged_signals={},
+        logging_stop_event=asyncio.Event(),
+        log_file_path="",
+        logging_dir="",
         script_dir="",
         fail_condition_triggered=False,
         _name_to_device={},

@@ -1,12 +1,28 @@
+import asyncio
 import inspect
 import os
+import smtplib
+from datetime import datetime
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 import bluesky.plan_stubs as bps
+import matplotlib
+import pandas as pd
+from dotenv import load_dotenv
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 from .exceptions import CommandNotFoundError, StopScript
 from .support import wait_for_condition
 
 active_failif_conditions = {}
+
+load_dotenv()
+
+EMAIL_ADDRESS = str(os.getenv("GMAIL_USER"))
+EMAIL_PASSWORD = str(os.getenv("GMAIL_PASS"))
 
 
 def process_megatron_command(command, args, context, current_script_path=None):
@@ -18,8 +34,10 @@ def process_megatron_command(command, args, context, current_script_path=None):
         "l": l_command,
         "log": log,
         "lograte": lograte,
+        "plot": plot,
         "print": print_command,
         "run": run,
+        "set": set,
         "setao": setao,
         "setdo": setdo,
         "stop": stop,
@@ -59,16 +77,75 @@ def exit_command():
     raise SystemExit
 
 
-def lograte(args):
-    print(f"Setting lograte to {args[0]}")
+def lograte(args, context):
+    try:
+        log_rate = float(args[0])
+        print(f"Setting log rate to {log_rate} seconds.")
+
+        if hasattr(context, "logging_stop_event") and context.logging_stop_event:
+            print("Stopping existing logging...")
+            context.logging_stop_event.set()
+
+        context.logging_stop_event = asyncio.Event()
+
+        async def logging_coro():
+            await asyncio.sleep(0)
+            stop_event = context.logging_stop_event
+            while not stop_event.is_set():
+                is_new_file = False
+                log_file_path = context.log_file_path
+                signals = context.logged_signals
+
+                if not os.path.isfile(log_file_path):
+                    dir, _ = os.path.split(log_file_path)
+                    os.makedirs(dir, exist_ok=True)
+                    is_new_file = True
+
+                timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
+
+                with open(log_file_path, "at") as f:
+                    if is_new_file:
+                        headers = ",".join([f'"{_}"' for _ in signals.keys()])
+                        f.write(f"Timestamp,{headers}\n")
+
+                    values = [signals[_].value for _ in signals.keys()]
+                    row = ",".join([f"{_:.6f}" if isinstance(_, float) else f"{_}" for _ in values])
+                    f.write(f"{timestamp},{row}\n")
+
+                await asyncio.sleep(log_rate)
+
+        print("Starting periodic logging with new log rate.")
+        yield from bps.sleep(0)
+        asyncio.ensure_future(logging_coro())
+
+    except ValueError:
+        print(f"Invalid log rate: {args[0]}. Must be a number.")
+    except Exception as e:
+        print(f"Failed to set log rate: {e}")
+
     yield from bps.null()
 
 
 def email(args):
     subject = args[0]
-    # message = args[1]
+    message = args[1]
     recipients = args[2:]
-    print(f"Sending email with subject '{subject}' to {recipients}")
+
+    msg = MIMEMultipart()
+    msg["From"] = EMAIL_ADDRESS
+    msg["To"] = ", ".join(recipients)
+    msg["Subject"] = subject
+    msg.attach(MIMEText(message, "plain"))
+
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
+            server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            server.sendmail(EMAIL_ADDRESS, recipients, msg.as_string())
+        print(f"Email sent successfully to {', '.join(recipients)}")
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+
     yield from bps.null()
 
 
@@ -110,6 +187,79 @@ def log(args, context):
     signal_name = args[0]
     context.logged_signals[signal_name] = context._name_to_device[signal_name]
     print(f"Added {signal_name} to logging signals.")
+    yield from bps.null()
+
+
+def plot(args, context):
+    if len(args) == 1 and args[0].lower() == "dump":
+        print("Dumping current logged signals:")
+        for pv_name, signal in context.logged_signals.items():
+            print(f"{pv_name}: {signal.value}")
+        yield from bps.null()
+        return
+
+    pv_names = []
+    geometry_args = []
+    for arg in args:
+        if arg.startswith("+"):
+            geometry_args.extend(arg[1:].split(","))
+        elif all(char.isdigit() or char == "," for char in arg):
+            geometry_args.extend(arg.split(","))
+        else:
+            pv_names.append(arg)
+
+    if not pv_names:
+        print("Error: No PVs specified for plotting.")
+        yield from bps.null()
+        return
+
+    if not os.path.isfile(context.log_file_path):
+        print("Error: Log file does not exist. Please ensure logging is enabled.")
+        yield from bps.null()
+        return
+
+    try:
+        df = pd.read_csv(context.log_file_path, comment=None, header=0, skip_blank_lines=True)
+        df.columns = df.columns.str.strip('"')
+        df = df.reset_index(drop=True)
+        df["Timestamp"] = pd.to_datetime(df["Timestamp"])
+    except Exception as e:
+        print(f"Error reading log file: {e}")
+        yield from bps.null()
+        return
+
+    missing_pvs = [pv for pv in pv_names if pv not in df.columns]
+    if missing_pvs:
+        print(f"Error: The following PVs are not in the log file: {', '.join(missing_pvs)}")
+        yield from bps.null()
+        return
+
+    plt.figure(figsize=(8, 6))
+    for pv_name in pv_names:
+        plt.plot(df["Timestamp"], df[pv_name], label=pv_name)
+
+    plt.title("PV Data Over Time")
+    plt.xlabel("Time")
+    plt.ylabel("Value")
+    plt.legend()
+
+    if geometry_args:
+        try:
+            x, y, w, h = map(int, geometry_args)
+            plt.gcf().set_size_inches(w / 100, h / 100)
+        except ValueError:
+            print(f"Invalid geometry format: {geometry_args}")
+            yield from bps.null()
+            return
+
+    plot_dir = os.path.join(context.logging_dir, "plots")
+    os.makedirs(plot_dir, exist_ok=True)
+
+    plot_filename = os.path.join(plot_dir, f"plot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png")
+    plt.savefig(plot_filename)
+    plt.close()
+
+    print(f"Plot saved to {plot_filename}")
     yield from bps.null()
 
 

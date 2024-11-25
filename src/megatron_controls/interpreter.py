@@ -79,10 +79,11 @@ class MegatronInterpreter:
 
     def _process_supported_devices(self):
         for desc, nm in self.context.device_mapping.items():
-            dev_name_full = nm
-            dev_name = dev_name_full.split(".", 1)[0]
-            dev = eval(dev_name_full, {dev_name: getattr(self.context.devices, dev_name)})
-            self.context._name_to_device[desc] = dev
+            parts = nm.split(".")
+            obj = self.context.devices
+            for part in parts:
+                obj = getattr(obj, part)
+            self.context._name_to_device[desc] = obj
 
     def execute_script(self, script_path):
         with open(script_path) as script_file:
