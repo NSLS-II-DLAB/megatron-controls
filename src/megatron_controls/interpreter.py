@@ -1,3 +1,4 @@
+import os
 import re
 
 from bluesky import plan_stubs as bps
@@ -199,3 +200,35 @@ class MegatronInterpreter:
                 yield from process_motor_command(command, args, self.context)
 
             i += 1
+
+    def scan_script_for_logs(self, script_path, scanned_scripts=None):
+        if scanned_scripts is None:
+            scanned_scripts = set()
+        if script_path in scanned_scripts:
+            return set()  # Avoid infinite recursion
+
+        scanned_scripts.add(script_path)
+
+        with open(script_path) as script_file:
+            script_lines = script_file.readlines()
+
+        logged_pvs = set()
+        for line in script_lines:
+            line = line.strip()
+            if line.startswith("#") or not line:
+                continue
+
+            tokens = self.tokenize_command(line)
+            if not tokens:
+                continue
+            command = tokens[0].lower()
+            args = tokens[1:]
+            if command == "log" and args:
+                pv_name = args[0].strip('"')
+                logged_pvs.add(pv_name)
+            elif command == "run" and args:
+                sub_script_name = args[0].strip('"')
+                sub_script_path = os.path.join(self.context.script_dir, sub_script_name)
+                logged_pvs.update(self.scan_script_for_logs(sub_script_path, scanned_scripts))
+
+        return logged_pvs

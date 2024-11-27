@@ -183,10 +183,9 @@ def failifoff(args):
     yield from bps.null()
 
 
-def log(args, context):
-    signal_name = args[0]
-    context.logged_signals[signal_name] = context._name_to_device[signal_name]
-    print(f"Added {signal_name} to logging signals.")
+def log(args):
+    pv_name = args[0]
+    print(f"Logging for {pv_name} has been set up.")
     yield from bps.null()
 
 
