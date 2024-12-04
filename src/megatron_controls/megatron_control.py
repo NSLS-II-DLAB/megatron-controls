@@ -150,36 +150,69 @@ def email(args):
 
 
 def failif(args, context):
-    pv_name, expected_value, fail_script = args
-    print(f"Setting failif on {pv_name} for value {expected_value}.")
+    if len(args) != 3:
+        print("Error: 'failif' requires 3 arguments: PV_NAME, TARGET_VALUE, SCRIPT_NAME")
+        yield from bps.null()
+        return
 
-    device_name = context.device_mapping.get(pv_name)
-    if not device_name:
-        raise RuntimeError(f"PV {pv_name} not found in device mapping.")
+    pv_name, target_value, script_name = args
+    try:
+        target_value = float(target_value)
+    except ValueError:
+        print(f"Error: Invalid target value '{target_value}' for 'failif'.")
+        yield from bps.null()
+        return
 
-    pv_signal = getattr(context.devices, device_name)
-    if not pv_signal:
-        raise RuntimeError(f"Signal for {pv_name} not found.")
+    if pv_name not in context.device_mapping:
+        print(f"Error: PV '{pv_name}' not found in the device mapping.")
+        yield from bps.null()
+        return
 
-    def check_pv_value(value, **kwargs):
-        if value == expected_value:
-            print(f"Failif triggered! {pv_name} reached value {expected_value}. Running {fail_script}.")
-            called_script_path = os.path.join(context.script_dir, fail_script)
-            context.run_script_callback(called_script_path)
+    device_name = context.device_mapping[pv_name]
+    pv_signal = getattr(context.devices, device_name, None)
+    if pv_signal is None:
+        print(f"Error: Device signal for PV '{pv_name}' not found.")
+        yield from bps.null()
+        return
 
-    token = pv_signal.subscribe(check_pv_value)
-    active_failif_conditions[pv_name] = (pv_signal, token)
+    print(f"Failif condition set: {pv_name} == {target_value}, script: {script_name}")
+    context.fail_condition_triggered = False
+
+    def on_pv_change(**kwargs):
+        if context.fail_condition_triggered:
+            return
+        value = kwargs.get("value")
+        if value == target_value:
+            print(
+                f"Failif triggered: {pv_signal.name} reached {target_value}. \
+                    Will run {script_name} after current command."
+            )
+            called_script_path = os.path.join(context.script_dir, script_name)
+            context.fail_condition_triggered = True
+            context.fail_script_path = called_script_path
+            # Do not call context.run_script_callback here
+
+    cid = pv_signal.subscribe(on_pv_change)
+
+    active_failif_conditions[pv_name] = (pv_signal, cid)
     yield from bps.null()
 
 
 def failifoff(args):
+    if len(args) != 1:
+        print("Error: 'failifoff' requires 1 argument: PV_NAME")
+        yield from bps.null()
+        return
+
     pv_name = args[0]
-    if pv_name in active_failif_conditions:
-        pv_signal, token = active_failif_conditions.pop(pv_name)
-        pv_signal.clear_sub(token)
-        print(f"Failif condition disabled for {pv_name}.")
-    else:
-        print(f"No active failif condition found for {pv_name}.")
+    if pv_name not in active_failif_conditions:
+        print(f"Error: No active 'failif' condition found for PV '{pv_name}'.")
+        yield from bps.null()
+        return
+
+    pv_signal, cid = active_failif_conditions.pop(pv_name)
+    pv_signal.unsubscribe(cid)
+    print(f"Failif condition disabled for PV '{pv_name}'.")
     yield from bps.null()
 
 
