@@ -278,12 +278,12 @@ def run(args, context):
 
 
 def set(args, context):
-    print("Setting digital output")
     dev_name = args[0]
     v = args[1]
     value = v if isinstance(v, str) else int(v)
     device = context._name_to_device[dev_name]
-    yield from bps.abs_set(device, value)
+    print(f"Setting digital output: device={dev_name!r} value={value!r}")
+    yield from bps.abs_set(device, value, wait=True)
 
 
 def setao(args):

@@ -4,12 +4,16 @@ from types import SimpleNamespace
 _device_mapping = {
     "Galil RBV": "galil_rbv",
     "Galil VAL": "galil_val",
-    "ION Power": "ION_Pump_PS.Pwr_I",
-    "ION Current": "ION_Pump_PS.I_I",
-    "ION Voltage": "ION_Pump_PS.E_I",
-    "ION Arc Rate": "ION_Pump_PS.Rate_Arc_I",
-    "ION KWH Count": "ION_Pump_PS.Cnt_Target_KwHr_RB",
+    "ION Power": "ION_Pump_PS.Pwr",
+    "ION Current": "ION_Pump_PS.I",
+    "ION Voltage": "ION_Pump_PS.E",
+    "ION Power SP": "ION_Pump_PS.Pwr_SP",
+    "ION Current SP": "ION_Pump_PS.I_SP",
+    "ION Voltage SP": "ION_Pump_PS.E_SP",
+    "ION Arc Rate": "ION_Pump_PS.Rate_Arc",
+    "ION KWH Count": "ION_Pump_PS.Cnt_Target_KwHr",
     "ION Output Enable": "ION_Pump_PS.Enbl_Out_Cmd",
+    #"ION Output Status": "ION_Pump_PS.Enbl_Out_Sts",
 }
 
 _required_devices = ("galil", "galil_val", "galil_rbv", "ION_Pump_PS")
