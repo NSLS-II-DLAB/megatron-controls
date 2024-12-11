@@ -133,6 +133,12 @@ class MegatronInterpreter:
                     yield from bps.null()
                 i += 1
 
+                if self.context.fail_condition_triggered:
+                    self.context.fail_condition_triggered = False
+                    fail_script_path = self.context.fail_script_path
+                    yield from self.execute_script(fail_script_path)
+                    return
+
         yield from plan()
 
     def tokenize_command(self, line):
@@ -200,6 +206,12 @@ class MegatronInterpreter:
                 yield from process_motor_command(command, args, self.context)
 
             i += 1
+
+            if self.context.fail_condition_triggered:
+                self.context.fail_condition_triggered = False
+                fail_script_path = self.context.fail_script_path
+                yield from self.execute_script(fail_script_path)
+                return
 
     def scan_script_for_logs(self, script_path, scanned_scripts=None):
         if scanned_scripts is None:
