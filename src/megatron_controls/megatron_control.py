@@ -155,16 +155,16 @@ def failif(args, context):
         yield from bps.null()
         return
 
-    pv_name, target_value, script_name = args
+    pv_name, target_str, script_name = args
     try:
-        target_value = float(target_value)
+        target_value = float(target_str)
     except ValueError:
-        print(f"Error: Invalid target value '{target_value}' for 'failif'.")
+        print(f"Error: Invalid target value '{target_str}' for 'failif'. Must be a numeric value.")
         yield from bps.null()
         return
 
     if pv_name not in context.device_mapping:
-        print(f"Error: PV '{pv_name}' not found in the device mapping.")
+        print(f"Error: PV '{pv_name}' not found in device mapping.")
         yield from bps.null()
         return
 
@@ -175,26 +175,37 @@ def failif(args, context):
         yield from bps.null()
         return
 
-    print(f"Failif condition set: {pv_name} == {target_value}, script: {script_name}")
+    print(f"Failif condition set: {pv_name} triggers fail if is {target_value}. Fail script: {script_name}")
     context.fail_condition_triggered = False
 
-    def on_pv_change(**kwargs):
+    initial_val = pv_signal.get()
+    last_value_holder = [initial_val]
+
+    def on_pv_change(value=None, **kwargs):
         if context.fail_condition_triggered:
             return
-        value = kwargs.get("value")
-        if value == target_value:
+
+        new_val = kwargs.get("value", value)
+        if new_val is None:
+            print(f"[failif debug] No 'value' key in callback for {pv_name}. Cannot evaluate crossing.")
+            return
+
+        old_val = last_value_holder[0]
+        last_value_holder[0] = new_val
+
+        old_diff = old_val - target_value
+        new_diff = new_val - target_value
+
+        if old_diff * new_diff <= 0:
             print(
-                f"Failif triggered: {pv_signal.name} reached {target_value}. \
-                    Will run {script_name} after current command."
+                f"Failif triggered: {pv_signal.name} crossed {target_value}. Running fail script '{script_name}'."
             )
             called_script_path = os.path.join(context.script_dir, script_name)
             context.fail_condition_triggered = True
             context.fail_script_path = called_script_path
-            # Do not call context.run_script_callback here
 
     cid = pv_signal.subscribe(on_pv_change)
-
-    active_failif_conditions[pv_name] = (pv_signal, cid)
+    active_failif_conditions[pv_name] = (pv_signal, cid, target_value)
     yield from bps.null()
 
 
