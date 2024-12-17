@@ -103,7 +103,7 @@ def lograte(args, context):
 
                 timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
 
-                with open(log_file_path, "at") as f:
+                with open(log_file_path, "a") as f:
                     if is_new_file:
                         headers = ",".join([f'"{_}"' for _ in signals.keys()])
                         f.write(f"Timestamp,{headers}\n")

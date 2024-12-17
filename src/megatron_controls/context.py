@@ -13,7 +13,7 @@ _device_mapping = {
     "ION Arc Rate": "ION_Pump_PS.Rate_Arc",
     "ION KWH Count": "ION_Pump_PS.Cnt_Target_KwHr",
     "ION Output Enable": "ION_Pump_PS.Enbl_Out_Cmd",
-    #"ION Output Status": "ION_Pump_PS.Enbl_Out_Sts",
+    # "ION Output Status": "ION_Pump_PS.Enbl_Out_Sts",
 }
 
 _required_devices = ("galil", "galil_val", "galil_rbv", "ION_Pump_PS")
