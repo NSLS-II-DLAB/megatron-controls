@@ -18,7 +18,7 @@ def ts_periodic_logging_wrapper(plan, signals, log_file_path, period=1):
 
             timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
 
-            with open(log_file_path, "at") as f:
+            with open(log_file_path, "a") as f:
                 if is_new_file:
                     s = ",".join([f'"{_}"' for _ in signals.keys()])
                     f.write(f"Timestamp,{s}\n")

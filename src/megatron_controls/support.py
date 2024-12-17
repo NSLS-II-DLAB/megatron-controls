@@ -23,15 +23,22 @@ class EpicsMotorGalil(EpicsMotor):
 
 class ION_Pump_PS(Device):
     Pwr = Cpt(EpicsSignalRO, "Pwr-I", kind="omitted", auto_monitor=True)
-    I = Cpt(EpicsSignalRO, "I-I", kind="omitted", auto_monitor=True)
+    I = Cpt(EpicsSignalRO, "I-I", kind="omitted", auto_monitor=True)  # noqa E741
     E = Cpt(EpicsSignalRO, "E-I", kind="omitted", auto_monitor=True)
     Pwr_SP = Cpt(EpicsSignal, "Pwr:Target-RB", write_pv="Pwr:Target-SP", kind="omitted", auto_monitor=True)
     I_SP = Cpt(EpicsSignal, "I:Target-RB", write_pv="I:Target-SP", kind="omitted", auto_monitor=True)
     E_SP = Cpt(EpicsSignal, "E:Target-RB", write_pv="E:Target-SP", kind="omitted", auto_monitor=True)
     Rate_Arc = Cpt(EpicsSignalRO, "Rate:Arc-I", kind="omitted", auto_monitor=True)
     Cnt_Target_KwHr = Cpt(EpicsSignalRO, "Cnt:TargetKwHr-RB", kind="omitted", auto_monitor=True)
-    #Enbl_Out_Cmd = Cpt(EpicsSignal, "Enbl:Out-Cmd", write_pv="Enbl:Out-Cmd", string=True, kind="omitted", auto_monitor=True)
-    Enbl_Out_Cmd = Cpt(EpicsSignal, "Enbl:Out-Sts", write_pv="Enbl:Out-Cmd", string=False, kind="omitted", auto_monitor=True, put_complete=True)
+    Enbl_Out_Cmd = Cpt(
+        EpicsSignal,
+        "Enbl:Out-Sts",
+        write_pv="Enbl:Out-Cmd",
+        string=False,
+        kind="omitted",
+        auto_monitor=True,
+        put_complete=True,
+    )
     # Enbl_Out_Sts = Cpt(EpicsSignalRO, "Enbl:Out-Sts", string=True, kind="omitted", auto_monitor=True)
 
 
