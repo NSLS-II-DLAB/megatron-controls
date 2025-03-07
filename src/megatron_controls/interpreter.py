@@ -1,18 +1,30 @@
 import os
 import re
 
+
+import bluesky.preprocessors as bp
 from bluesky import plan_stubs as bps
 
 from .exceptions import CommandNotFoundError, LoopSyntaxError, StopScript
-from .megatron_control import process_megatron_command
-from .motor_control import process_motor_command
+from .megatron_control import MegatronControl
+from .motor_control import MotorControl
+from .logger import ts_periodic_logging_decorator
+
+from .context import create_shared_context
 
 
 class MegatronInterpreter:
-    def __init__(self, *, shared_context):
-        self.context = shared_context
-        self.context.run_script_callback = self.execute_script  # Set the callback for running sub-scripts
+    def __init__(self, *, devices, script_dir, logging_dir, log_file_path):
+        self._context = create_shared_context(devices)
+        self._context.script_dir = script_dir
+        self._context.logging_dir = logging_dir
+        self._context.log_file_path = log_file_path
+
+        self._context.run_script_callback = self.execute_script  # Set the callback for running sub-scripts
         self._process_supported_devices()
+
+        self._motor_control = MotorControl(self._context)
+        self._megatron_control = MegatronControl(self._context)
 
         self.megatron_commands = [
             "email",
@@ -78,13 +90,42 @@ class MegatronInterpreter:
             "xq",
         ]
 
+    @property
+    def context(self):
+        """
+        Returns reference to the context object.
+        """
+        return self._context
+
     def _process_supported_devices(self):
-        for desc, nm in self.context.device_mapping.items():
+        for desc, nm in self._context.device_mapping.items():
             parts = nm.split(".")
-            obj = self.context.devices
+            obj = self._context.devices
             for part in parts:
                 obj = getattr(obj, part)
-            self.context._name_to_device[desc] = obj
+            self._context._name_to_device[desc] = obj
+
+    def run_script(self, script_name):
+        """
+        The plan that executes specified script. Must be executed by the RunEngine.
+        """
+        @ts_periodic_logging_decorator(
+            signals=self._context.logged_signals, log_file_path=self._context.log_file_path, period=1
+        )
+        def run_with_logging():
+            script_path = os.path.join(self._context.script_dir, script_name)
+            logged_pvs = self.scan_script_for_logs(script_path)
+            for pv_name in logged_pvs:
+                device_attr = self.context.device_mapping.get(pv_name)
+                if not device_attr:
+                    raise ValueError(f"Unknown PV name {pv_name}")
+                device = self.context.devices
+                for attr in device_attr.split("."):
+                    device = getattr(device, attr)
+                self.context.logged_signals[pv_name] = device
+            yield from self.execute_script(script_path)
+
+        yield from run_with_logging()
 
     def execute_script(self, script_path):
         with open(script_path) as script_file:
@@ -121,9 +162,9 @@ class MegatronInterpreter:
                     else:
                         command, *args = self.tokenize_command(line)
                         if command in self.megatron_commands:
-                            yield from process_megatron_command(command, args, self.context)
+                            yield from self._megatron_control(command, args)
                         elif command in self.motor_commands:
-                            yield from process_motor_command(command, args, self.context)
+                            yield from self._motor_control(command, args)
                         else:
                             raise CommandNotFoundError(command)
                 except StopScript:
@@ -142,7 +183,7 @@ class MegatronInterpreter:
 
     def handle_timer(self, timer_value):
         print(f"Processing timer for {timer_value} seconds")
-        yield from process_megatron_command("t", [timer_value], self.context)
+        yield from self._megatron_control("t", [timer_value])
 
     def handle_loop(self, loop_count, block):
         for _ in range(loop_count):
@@ -195,9 +236,9 @@ class MegatronInterpreter:
             command, *args = self.tokenize_command(line)
 
             if command in self.megatron_commands:
-                yield from process_megatron_command(command, args, self.context)
+                yield from self._megatron_control(command, args)
             elif command in self.motor_commands:
-                yield from process_motor_command(command, args, self.context)
+                yield from self._motor_control(command, args)
 
             i += 1
 
@@ -228,7 +269,7 @@ class MegatronInterpreter:
                 logged_pvs.add(pv_name)
             elif command == "run" and args:
                 sub_script_name = args[0].strip('"')
-                sub_script_path = os.path.join(self.context.script_dir, sub_script_name)
+                sub_script_path = os.path.join(self._context.script_dir, sub_script_name)
                 logged_pvs.update(self.scan_script_for_logs(sub_script_path, scanned_scripts))
 
         return logged_pvs
