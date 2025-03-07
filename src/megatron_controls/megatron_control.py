@@ -9,7 +9,8 @@ from email.mime.text import MIMEText
 import bluesky.plan_stubs as bps
 import matplotlib
 import pandas as pd
-#from dotenv import load_dotenv
+
+# from dotenv import load_dotenv
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -19,14 +20,13 @@ from .support import wait_for_condition
 
 active_failif_conditions = {}
 
-#load_dotenv()
+# load_dotenv()
 
 EMAIL_ADDRESS = str(os.getenv("GMAIL_USER"))
 EMAIL_PASSWORD = str(os.getenv("GMAIL_PASS"))
 
 
 class MegatronControl:
-
     def __init__(self, context):
         self._context = context
 
@@ -65,22 +65,20 @@ class MegatronControl:
         else:
             raise CommandNotFoundError(command)
 
-
     def l_command(self, block):
         for line in block:
             yield from self.__call__(line[0], line[1:])
-
 
     def t_command(self, args):
         timer_duration = float(args[0])
         print(f"Executing timer for {timer_duration} seconds")
         yield from bps.sleep(timer_duration)
 
-
-    def exit_command(self, ):
+    def exit_command(
+        self,
+    ):
         print("Exiting the interpreter.")
         raise SystemExit
-
 
     def lograte(self, args):
         try:
@@ -108,7 +106,7 @@ class MegatronControl:
 
                     timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
 
-                    with open(log_file_path, "at") as f:
+                    with open(log_file_path, "a") as f:
                         if is_new_file:
                             headers = ",".join([f'"{_}"' for _ in signals.keys()])
                             f.write(f"Timestamp,{headers}\n")
@@ -129,7 +127,6 @@ class MegatronControl:
             print(f"Failed to set log rate: {e}")
 
         yield from bps.null()
-
 
     def email(self, args):
         subject = args[0]
@@ -153,7 +150,6 @@ class MegatronControl:
 
         yield from bps.null()
 
-
     def failif(self, args):
         pv_name, expected_value, fail_script = args
         print(f"Setting failif on {pv_name} for value {expected_value}.")
@@ -176,7 +172,6 @@ class MegatronControl:
         active_failif_conditions[pv_name] = (pv_signal, token)
         yield from bps.null()
 
-
     def failifoff(self, args):
         pv_name = args[0]
         if pv_name in active_failif_conditions:
@@ -187,12 +182,10 @@ class MegatronControl:
             print(f"No active failif condition found for {pv_name}.")
         yield from bps.null()
 
-
     def log(self, args):
         pv_name = args[0]
         print(f"Logging for {pv_name} has been set up.")
         yield from bps.null()
-
 
     def plot(self, args):
         if len(args) == 1 and args[0].lower() == "dump":
@@ -266,12 +259,10 @@ class MegatronControl:
         print(f"Plot saved to {plot_filename}")
         yield from bps.null()
 
-
     def print_command(self, args):
         text = " ".join(args)
         print(f"Executing 'print' command with text: {text}")
         yield from bps.null()
-
 
     def run(self, args):
         script_name = args[0]
@@ -281,7 +272,6 @@ class MegatronControl:
 
         yield from self._context.run_script_callback(called_script_path)
 
-
     def set(self, args):
         print("Setting digital output")
         dev_name = args[0]
@@ -290,13 +280,11 @@ class MegatronControl:
         device = self._context._name_to_device[dev_name]
         yield from bps.abs_set(device, value)
 
-
     def setao(self, args):
         sp = args[0]
         value = float(args[1])
         print(f"Setting analog output {sp} to {value}")
         yield from bps.null()
-
 
     def setdo(self, args):
         pv = args[0]
@@ -304,18 +292,15 @@ class MegatronControl:
         print(f"Setting digital output {pv} to {value}")
         yield from bps.null()
 
-
     def stop(self, args):
         print("Stopping the current script.")
         raise StopScript()
-
 
     def var(self, args):
         variable = args[0]
         expression = args[1]
         print(f"Setting variable {variable} to {expression}")
         yield from bps.null()
-
 
     def waitai(self, args):
         source = args[0]
@@ -333,7 +318,6 @@ class MegatronControl:
         yield from wait_for_condition(
             signal=signal, target=value / 1000000, operator=operator, tolerance=tolerance, timeout=timeout
         )
-
 
     def waitdi(self, args):
         source = args[0]

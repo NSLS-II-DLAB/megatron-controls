@@ -1,16 +1,13 @@
 import os
 import re
 
-
-import bluesky.preprocessors as bp
 from bluesky import plan_stubs as bps
 
+from .context import create_shared_context
 from .exceptions import CommandNotFoundError, LoopSyntaxError, StopScript
+from .logger import ts_periodic_logging_decorator
 from .megatron_control import MegatronControl
 from .motor_control import MotorControl
-from .logger import ts_periodic_logging_decorator
-
-from .context import create_shared_context
 
 
 class MegatronInterpreter:
@@ -109,6 +106,7 @@ class MegatronInterpreter:
         """
         The plan that executes specified script. Must be executed by the RunEngine.
         """
+
         @ts_periodic_logging_decorator(
             signals=self._context.logged_signals, log_file_path=self._context.log_file_path, period=1
         )
